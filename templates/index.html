@@ -1,0 +1,66 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<form action="{{ url_for('generate') }}" method="post" class="space-y-4 bg-slate-900/50 border border-slate-800 p-4 rounded-xl">
+  <div class="grid md:grid-cols-2 gap-4">
+    <div>
+      <label class="block text-sm text-slate-400 mb-1">Topic</label>
+      <select name="topic" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2">
+        {% for t in topics %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm text-slate-400 mb-1">Number of Questions (160)</label>
+      <input name="count" type="number" min="1" max="60" value="10" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2"/>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4">
+    <div>
+      <label class="block text-sm text-slate-400 mb-1">Difficulty</label>
+      <select name="difficulty" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2">
+        {% for d in ["beginner","intermediate","advanced"] %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm text-slate-400 mb-1">Omit Question Types</label>
+      <div class="flex flex-wrap gap-3">
+        {% for t in types %}
+          <label class="inline-flex items-center gap-2 text-sm bg-slate-900 border border-slate-800 px-3 py-1 rounded-full">
+            <input type="checkbox" name="omit" value="{{ t }}" class="accent-sky-400"> {{ t }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Timer controls (optional; harmless if your app.py doesnt use them) -->
+  <div class="grid md:grid-cols-2 gap-4">
+    <div>
+      <label class="block text-sm text-slate-400 mb-1">Timer</label>
+      <label class="inline-flex items-center gap-2 text-sm bg-slate-900 border border-slate-800 px-3 py-1 rounded-full">
+        <input type="checkbox" name="enable_timer" value="1" class="accent-sky-400"> Enable exam-style timer
+      </label>
+    </div>
+    <div>
+      <label class="block text-sm text-slate-400 mb-1">Duration (minutes)</label>
+      <input name="duration_minutes" type="number" min="5" max="240" value="60" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2">
+      <div class="text-xs text-slate-400 mt-1">Typical certs: 60180 minutes</div>
+    </div>
+  </div>
+
+  <button class="px-4 py-2 font-semibold rounded-lg bg-gradient-to-r from-sky-400 to-fuchsia-500 text-slate-950">
+    Generate Quiz
+  </button>
+</form>
+
+{% if session.history %}
+  <div class="mt-6 bg-slate-900/50 border border-slate-800 p-4 rounded-xl">
+    <h2 class="text-lg font-semibold mb-2">Recent Attempts</h2>
+    <ol class="text-sm text-slate-300 list-decimal pl-4">
+      {% for h in session.history %}
+        <li>{{ h.topic }}  {{ h.difficulty }}  {{ h.pct }}%</li>
+      {% endfor %}
+    </ol>
+  </div>
+{% endif %}
+{% endblock %}
