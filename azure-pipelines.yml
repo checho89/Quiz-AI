@@ -83,4 +83,7 @@ stages:
             inputs:
               azureSubscription: $(azureServiceConnectionId)
               appName: $(webAppName)
-              package: $(Pipeline.Workspace)/drop/$(Build.BuildId).zip
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: 'pwd && ls -la'
