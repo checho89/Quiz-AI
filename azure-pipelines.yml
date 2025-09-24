@@ -1,27 +1,13 @@
-# Python to Linux Web App on Azure
-# Build your Python project and deploy it to Azure as a Linux Web App.
-# Change python version to one thats appropriate for your application.
-# https://docs.microsoft.com/azure/devops/pipelines/languages/python
-
 trigger:
 - main
 
 variables:
-  # Azure Resource Manager connection created during pipeline creation
   azureServiceConnectionId: '83f7837f-28b3-43ac-a940-2dc057771536'
-
-  # Web app name
   webAppName: 'QuizAI'
-
-  # Agent VM image name
   vmImageName: 'ubuntu-latest'
-
-  # Environment name
   environmentName: 'QuizAI'
-
-  # Project root folder. Point to the folder containing manage.py file.
-  projectRoot: $(System.DefaultWorkingDirectory)
-
+  # Point to your app folder:
+  projectRoot: $(System.DefaultWorkingDirectory)/v2/quiz-ai
   pythonVersion: '3.11'
 
 stages:
@@ -41,22 +27,26 @@ stages:
         python -m venv antenv
         source antenv/bin/activate
         python -m pip install --upgrade pip
-        pip install setup
-        pip install -r requirements.txt
+        python -m pip install -r requirements.txt
       workingDirectory: $(projectRoot)
       displayName: "Install requirements"
 
     - task: ArchiveFiles@2
-      displayName: 'Archive files'
+      displayName: 'Archive app'
       inputs:
         rootFolderOrFile: '$(projectRoot)'
         includeRootFolder: false
         archiveType: zip
-        archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+        archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
         replaceExistingArchive: true
 
-    - upload: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
-      displayName: 'Upload package'
+    - script: |
+        echo "Staging dir: $(Build.ArtifactStagingDirectory)"
+        ls -la $(Build.ArtifactStagingDirectory)
+      displayName: 'List staged ZIP'
+
+    - publish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+      displayName: 'Publish artifact'
       artifact: drop
 
 - stage: Deploy
@@ -72,18 +62,19 @@ stages:
       runOnce:
         deploy:
           steps:
+          # Download the 'drop' artifact produced above
+          - download: current
+            artifact: drop
 
-          - task: UsePythonVersion@0
-            inputs:
-              versionSpec: '$(pythonVersion)'
-            displayName: 'Use Python version'
+          - script: |
+              echo "Pipeline workspace: $(Pipeline.Workspace)"
+              ls -la $(Pipeline.Workspace)/drop
+            displayName: 'List downloaded artifacts'
 
           - task: AzureWebApp@1
-            displayName: 'Deploy Azure Web App : QuizAI'
+            displayName: 'Deploy Azure Web App : $(webAppName)'
             inputs:
               azureSubscription: $(azureServiceConnectionId)
+              appType: 'webAppLinux'
               appName: $(webAppName)
-          - task: Bash@3
-            inputs:
-              targetType: 'inline'
-              script: 'pwd && ls -la'
+              package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
