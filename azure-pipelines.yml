@@ -1,0 +1,80 @@
+trigger:
+- main
+
+variables:
+  azureServiceConnectionId: '83f7837f-28b3-43ac-a940-2dc057771536'
+  webAppName: 'QuizAI'
+  vmImageName: 'ubuntu-latest'
+  environmentName: 'QuizAI'
+  # Point to your app folder:
+  projectRoot: $(System.DefaultWorkingDirectory)/v2/quiz-ai
+  pythonVersion: '3.11'
+
+stages:
+- stage: Build
+  displayName: Build stage
+  jobs:
+  - job: BuildJob
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+      displayName: 'Use Python $(pythonVersion)'
+
+    - script: |
+        python -m venv antenv
+        source antenv/bin/activate
+        python -m pip install --upgrade pip
+        python -m pip install -r requirements.txt
+      workingDirectory: $(Build.SourcesDirectory)/v2/quiz-ai
+      displayName: "Install requirements"
+
+    - task: ArchiveFiles@2
+      displayName: 'Archive app'
+      inputs:
+        rootFolderOrFile: '$(projectRoot)'
+        includeRootFolder: false
+        archiveType: zip
+        archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+        replaceExistingArchive: true
+
+    - script: |
+        echo "Staging dir: $(Build.ArtifactStagingDirectory)"
+        ls -la $(Build.ArtifactStagingDirectory)
+      displayName: 'List staged ZIP'
+
+    - publish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+      displayName: 'Publish artifact'
+      artifact: drop
+
+- stage: Deploy
+  displayName: 'Deploy Web App'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - deployment: DeploymentJob
+    pool:
+      vmImage: $(vmImageName)
+    environment: $(environmentName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          # Download the 'drop' artifact produced above
+          - download: current
+            artifact: drop
+
+          - script: |
+              echo "Pipeline workspace: $(Pipeline.Workspace)"
+              ls -la $(Pipeline.Workspace)/drop
+            displayName: 'List downloaded artifacts'
+
+          - task: AzureWebApp@1
+            displayName: 'Deploy Azure Web App : $(webAppName)'
+            inputs:
+              azureSubscription: $(azureServiceConnectionId)
+              appType: 'webAppLinux'
+              appName: $(webAppName)
+              package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
