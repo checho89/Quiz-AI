@@ -17,7 +17,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-key")
-PORT = int(os.getenv("PORT", "5000"))
+
 
 
 # -----------------------------
@@ -289,5 +289,6 @@ def submit():
 # Run the app
 # -----------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=True)
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)
 
