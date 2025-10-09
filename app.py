@@ -25,18 +25,29 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-key")
 # -----------------------------
 MONGO_URI = os.getenv(
     "MONGO_URI",
-    "mongodb+srv://user1:Welcome1@database1.hjgtcut.mongodb.net/?retryWrites=true&w=majority&appName=DataBase1"
+   "mongodb+srv://user1:Welcome1@database1.hjgtcut.mongodb.net/?retryWrites=true&w=majority&ssl=true&tlsAllowInvalidCertificates=true"
+
 )
 
-client = MongoClient(MONGO_URI)
-db = client["DataBase1"]
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
+    db = client["DataBase1"]
+    client.server_info()  # Force connection test
+    print("✅ MongoDB connection successful")
+except Exception as e:
+    print(f"❌ MongoDB connection failed: {e}")
+    db = None
 
-users_collection = db["users"]
-attempts_collection = db["attempts"]
+if db:
+    users_collection = db["users"]
+    attempts_collection = db["attempts"]
 
-# Create indexes for faster lookups
-users_collection.create_index([("username", ASCENDING)], unique=True)
-attempts_collection.create_index([("user_id", ASCENDING), ("timestamp", ASCENDING)])
+    # Create indexes for faster lookups
+    users_collection.create_index([("username", ASCENDING)], unique=True)
+    attempts_collection.create_index([("user_id", ASCENDING), ("timestamp", ASCENDING)])
+else:
+    users_collection = None
+    attempts_collection = None
 
 # -----------------------------
 # Constants
